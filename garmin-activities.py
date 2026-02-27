@@ -298,7 +298,7 @@ def main():
 
     # Initialize Garmin client and login
     # garmin_client = GarminClient(garmin_email, garmin_password)
-    garmin_client = GarminClient(garmin_email, garmin_password, is_cn = TRUE)
+    garmin_client = GarminClient(garmin_email, garmin_password, is_cn=True)
     garmin_client.login()
     notion_client = NotionClient(auth=notion_token)
 
