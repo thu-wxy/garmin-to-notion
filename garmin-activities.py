@@ -5,6 +5,7 @@ import pytz
 from dotenv import load_dotenv
 from garminconnect import Garmin as GarminClient
 from notion_client import Client as NotionClient
+from notion_client.errors import APIResponseError
 
 # Your local time zone, replace with the appropriate one if needed
 local_tz = pytz.timezone('America/Toronto')
@@ -113,6 +114,70 @@ def format_pace(average_speed: float) -> str:
         return f"{minutes}:{seconds:02d} min/km"
     else:
         return ""
+
+
+def format_hr_zone(avg_hr: float) -> str:
+    """Map average HR (bpm) to a descriptive Garmin-style HR zone label.
+
+    Zone thresholds are approximate and suit a broad range of adults.
+    Users can tune these by modifying the bpm boundaries below.
+    """
+    if not avg_hr or avg_hr <= 0:
+        return ""
+    bpm = int(avg_hr)
+    if bpm < 100:
+        return "Zone 1 · Warm Up"
+    elif bpm < 120:
+        return "Zone 2 · Easy"
+    elif bpm < 140:
+        return "Zone 3 · Aerobic"
+    elif bpm < 160:
+        return "Zone 4 · Threshold"
+    else:
+        return "Zone 5 · Max"
+
+
+def format_intensity(aerobic_te: float) -> str:
+    """Map aerobic training effect (0–5 Garmin scale) to an emoji intensity label."""
+    if aerobic_te is None or aerobic_te <= 0:
+        return "😴 Recovery"
+    elif aerobic_te < 2.0:
+        return "🟢 Minor Benefit"
+    elif aerobic_te < 3.0:
+        return "🟡 Maintaining"
+    elif aerobic_te < 4.0:
+        return "🟠 Improving"
+    elif aerobic_te < 4.5:
+        return "🔴 Highly Impacting"
+    else:
+        return "🔴 Overreaching"
+
+
+def _build_optional_properties(activity: dict) -> dict:
+    """Build the optional visual-enrichment properties for a Garmin activity.
+
+    These fields are written to Notion only when the matching columns exist in
+    the database schema; callers fall back to core properties on APIResponseError.
+
+    ``Intensity`` is always included (even for zero-effect activities) because
+    '😴 Recovery' is itself a meaningful visual indicator.
+    """
+    avg_hr = int(activity.get('averageHR') or 0)
+    max_hr = int(activity.get('maxHR') or 0)
+    elevation_gain = round(activity.get('elevationGain') or 0)
+    aerobic_te = activity.get('aerobicTrainingEffect', 0) or 0
+
+    optional: dict = {"Intensity": {"select": {"name": format_intensity(aerobic_te)}}}
+    if avg_hr > 0:
+        optional["Avg HR"] = {"number": avg_hr}
+    if max_hr > 0:
+        optional["Max HR"] = {"number": max_hr}
+    hr_zone = format_hr_zone(avg_hr)
+    if hr_zone:
+        optional["HR Zone"] = {"select": {"name": hr_zone}}
+    if elevation_gain > 0:
+        optional["Elevation Gain (m)"] = {"number": elevation_gain}
+    return optional
 
 
 def activity_exists(
@@ -229,15 +294,25 @@ def create_activity(notion_client: NotionClient, database_id: str, activity: dic
         "Fav": {"checkbox": activity.get('favorite', False)}
     }
 
-    page = {
+    # Optional visual-enrichment fields — only written when the Notion DB has the
+    # matching columns. If the schema does not include them the API call will fail
+    # and we transparently retry with the core properties only.
+    optional_properties = _build_optional_properties(activity)
+
+    page: dict = {
         "parent": {"database_id": database_id},
-        "properties": properties,
+        "properties": {**properties, **optional_properties},
     }
 
     if icon_url:
         page["icon"] = {"type": "external", "external": {"url": icon_url}}
 
-    notion_client.pages.create(**page)
+    try:
+        notion_client.pages.create(**page)
+    except APIResponseError:
+        # The DB schema may not include optional columns — fall back to core fields
+        page["properties"] = properties
+        notion_client.pages.create(**page)
 
 
 def update_activity(notion_client: NotionClient, existing_activity: dict, new_activity: dict) -> None:
@@ -275,15 +350,23 @@ def update_activity(notion_client: NotionClient, existing_activity: dict, new_ac
         "Fav": {"checkbox": new_activity.get('favorite', False)}
     }
 
-    update = {
+    # Optional visual-enrichment fields (same graceful-fallback pattern as create_activity)
+    optional_properties = _build_optional_properties(new_activity)
+
+    update: dict = {
         "page_id": existing_activity['id'],
-        "properties": properties,
+        "properties": {**properties, **optional_properties},
     }
 
     if icon_url:
         update["icon"] = {"type": "external", "external": {"url": icon_url}}
 
-    notion_client.pages.update(**update)
+    try:
+        notion_client.pages.update(**update)
+    except APIResponseError:
+        # The DB schema may not include optional columns — fall back to core fields
+        update["properties"] = properties
+        notion_client.pages.update(**update)
 
 
 def main():
