@@ -1,64 +1,161 @@
-[![Sync Garmin to Notion](https://github.com/chloevoyer/garmin-to-notion/actions/workflows/sync_garmin_to_notion.yml/badge.svg?branch=main)](https://github.com/chloevoyer/garmin-to-notion/actions/workflows/sync_garmin_to_notion.yml)
+[![Sync Garmin to Notion](https://github.com/thu-wxy/garmin-to-notion/actions/workflows/sync_garmin_to_notion.yml/badge.svg?branch=main)](https://github.com/thu-wxy/garmin-to-notion/actions/workflows/sync_garmin_to_notion.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 # Garmin to Notion Integration :watch:
-This project connects your Garmin activities and personal records to your Notion database, allowing you to keep track of your performance metrics in one place.
 
-## Features :sparkles:  
-  🔄  Automatically sync Garmin activities to Notion in real-time  
-  📊  Track detailed activity metrics (distance, pace, heart rate)  
-  🎯  Extract and track personal records (fastest 1K, longest ride)  
-  👣  Optional daily steps tracker
-  😴  Optional sleep data tracker  
-  🤖  Zero-touch automation once configured  
-  📱  Compatible with all Garmin activities and devices  
-  🔧  Easy setup with clear instructions and minimal coding required  
+Automatically sync your **Garmin Connect** activities, personal records, steps, and sleep data into a **Notion** database — with rich visual indicators so you can spot trends at a glance.
 
-## Prerequisites :hammer_and_wrench:  
-- A Notion account with API access.
-- A Garmin Connect account to pull activity data.
-- If you wish to sync your Peloton workouts with Garmin, see [peloton-to-garmin](https://github.com/philosowaffle/peloton-to-garmin)
-## Getting Started :dart:
-A detailed step-by-step guide is provided on my Notion template [here](https://chloevoyer.notion.site/Set-up-Guide-17915ce7058880559a3ac9f8a0720046).
-For more advanced users, follow these steps to set up the integration:
-### 1. Fork this GitHub Repository
-### 2. Duplicate my [Notion Template](https://www.notion.so/templates/fitness-tracker-738)
-* Save your Activities and Personal Records database ID (you will need it for step 4)
-  * Optional: Daily Steps database ID
-  * Look at the URL: notion.so/username/[string-of-characters]
-  * The database ID is everything after your “username/“ and before the “?v”
-### 3. Create Notion Token
-* Go to [Notion Integrations](https://www.notion.so/profile/integrations).
-* [Create](https://developers.notion.com/docs/create-a-notion-integration) a new integration and copy the integration token.
-* [Share](https://www.notion.so/help/add-and-manage-connections-with-the-api#enterprise-connection-settings) the integration with the target database in Notion.
-### 4. Set Environment Secrets
-* Environment secrets to define:
-  * GARMIN_EMAIL
-  * GARMIN_PASSWORD
-  * NOTION_TOKEN
-  * NOTION_DB_ID
-  * NOTION_PR_DB_ID
-  * NOTION_STEPS_DB_ID (optional)
-  * NOTION_SLEEP_DB_ID (optional)
-### 5. Run Scripts (if not using automatic workflow)
-* Run [garmin-activities.py](https://github.com/chloevoyer/garmin-to-notion/blob/main/garmin-activities.py) to sync your Garmin activities to Notion.  
-`python garmin-activities.py`
-* Run [person-records.py](https://github.com/chloevoyer/garmin-to-notion/blob/main/personal-records.py) to extract activity records (e.g., fastest run, longest ride).  
-`python personal-records.py` 
-## Example Configuration :pencil:  
-You can customize the scripts to fit your needs by modifying environment variables and Notion database settings.  
+---
 
-Here is a screenshot of what my Notion dashboard looks like:  
+## ✨ Features
+
+| Script | What it syncs |
+|---|---|
+| `garmin-activities.py` | All activities: run, ride, swim, yoga, strength … |
+| `personal-records.py` | Fastest 1K/5K/10K, longest run/ride, power PRs |
+| `daily-steps.py` | Daily step count and goal progress *(optional)* |
+| `sleep-data.py` | Sleep stages, resting HR, bedtime/wake times *(optional)* |
+
+**Visual enhancements included in every activity entry:**
+
+- 🏃 **Activity icon** — per-type icon rendered directly on the Notion page
+- 📏 **Avg Pace** — formatted as `5:30 min/km`
+- 💓 **Avg HR / Max HR** — numerical, filterable
+- 🔴 **HR Zone** — auto-derived label (`Zone 2 · Easy` … `Zone 5 · Max`)
+- ⚡ **Intensity** — emoji label derived from Garmin's Aerobic Training Effect
+  (`😴 Recovery` → `🟢 Minor Benefit` → `🟡 Maintaining` → `🟠 Improving` → `🔴 Overreaching`)
+- ⛰️ **Elevation Gain (m)** — recorded when the activity includes GPS altitude data
+- 🏅 **PR / Fav** checkboxes, Training Effect select, Aerobic / Anaerobic TE scores
+
+> **Backward-compatible:** The five new optional columns (`Avg HR`, `Max HR`, `HR Zone`, `Intensity`, `Elevation Gain (m)`) are written only when they exist in your Notion database schema. If they are absent the script silently falls back to the original core fields — your existing database keeps working without any changes.
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# 1 · Fork this repo, then clone your fork
+git clone https://github.com/<your-username>/garmin-to-notion
+cd garmin-to-notion
+
+# 2 · Install dependencies
+pip install -r requirements.txt
+
+# 3 · Copy the example env file and fill in your credentials
+cp .example.env .env
+# Edit .env with your GARMIN_EMAIL, GARMIN_PASSWORD, NOTION_TOKEN, …
+
+# 4 · Run manually
+python garmin-activities.py   # sync activities
+python personal-records.py    # sync PRs
+python daily-steps.py         # sync steps  (requires NOTION_STEPS_DB_ID)
+python sleep-data.py          # sync sleep  (requires NOTION_SLEEP_DB_ID)
+```
+
+Automated daily sync via GitHub Actions is configured in `.github/workflows/sync_garmin_to_notion.yml` and runs at **01:00 UTC** by default.
+
+---
+
+## 🛠️ Prerequisites
+
+- A **Garmin Connect** account
+- A **Notion** account with API access
+- Python 3.11+
+
+*Optional: sync Peloton workouts into Garmin first with [peloton-to-garmin](https://github.com/philosowaffle/peloton-to-garmin).*
+
+---
+
+## 📋 Setup Guide
+
+### 1. Fork this Repository
+
+### 2. Duplicate the Notion Template
+
+Duplicate the free [Fitness Tracker template](https://www.notion.so/templates/fitness-tracker-738) to your workspace.
+
+- **Activities DB** — copy the database ID from the URL: `notion.so/<username>/<database-id>?v=…`
+- **Personal Records DB** — same process
+- *(Optional)* **Daily Steps DB** and **Sleep DB**
+
+### 3. Create a Notion Integration Token
+
+1. Go to [Notion Integrations](https://www.notion.so/profile/integrations) and create a new integration.
+2. Copy the **Internal Integration Token**.
+3. [Share each database](https://www.notion.so/help/add-and-manage-connections-with-the-api) with your integration.
+
+### 4. Configure Repository Secrets
+
+Set these in **Settings → Secrets and variables → Actions**:
+
+| Secret / Variable | Required | Description |
+|---|---|---|
+| `GARMIN_EMAIL` | ✅ | Garmin Connect login email |
+| `GARMIN_PASSWORD` | ✅ | Garmin Connect password |
+| `NOTION_TOKEN` | ✅ | Notion integration token |
+| `NOTION_DB_ID` | ✅ | Activities database ID |
+| `NOTION_PR_DB_ID` | ✅ | Personal Records database ID |
+| `NOTION_STEPS_DB_ID` | ☑️ optional | Daily Steps database ID |
+| `NOTION_SLEEP_DB_ID` | ☑️ optional | Sleep database ID |
+| `GARMIN_ACTIVITIES_FETCH_LIMIT` | ☑️ optional | Max activities to fetch (default: 1000) |
+
+### 5. (Optional) Add Visual Columns to Your Activities DB
+
+To see the new visual fields, add these columns to your Notion Activities database:
+
+| Column name | Type | Notes |
+|---|---|---|
+| `Avg HR` | Number | Average heart rate (bpm) |
+| `Max HR` | Number | Peak heart rate (bpm) |
+| `HR Zone` | Select | Auto-set: Zone 1–5 with label |
+| `Intensity` | Select | Emoji label from Aerobic Training Effect |
+| `Elevation Gain (m)` | Number | Cumulative elevation gain |
+
+If these columns are absent the script works exactly as before.
+
+---
+
+## 🖼️ What it Looks Like
+
+Here is a screenshot of the Notion dashboard using this integration:
+
 ![garmin-to-notion-template](https://github.com/user-attachments/assets/b37077cc-fe87-466f-9424-8ba9e4efa909)
 
+**Example activity entry** (Activities database row):
 
-My Notion template is available for free and can be duplicated to your Notion [here](https://www.notion.so/templates/fitness-tracker-738)
+| Field | Example value |
+|---|---|
+| Activity Name | Morning Run |
+| Activity Type | Running |
+| Date | 2024-05-10 07:30 |
+| Distance (km) | 10.23 |
+| Duration (min) | 54.10 |
+| Avg Pace | 5:17 min/km |
+| Calories | 612 |
+| Avg HR | 148 |
+| Max HR | 172 |
+| HR Zone | Zone 4 · Threshold |
+| Intensity | 🟠 Improving |
+| Aerobic | 3.4 |
+| Aerobic Effect | Impacting |
+| Elevation Gain (m) | 85 |
+| PR | ☑ |
 
-## Acknowledgements :raised_hands:  
-- Reference dictionary and examples can be found in [cyberjunky/python-garminconnect](https://github.com/cyberjunky/python-garminconnect.git).
-- This project was inspired by [n-kratz/garmin-notion](https://github.com/n-kratz/garmin-notion.git).
-## Contributing :handshake:   
-Contributions are welcome! If you find a bug or want to add a feature, feel free to open an issue or submit a pull request. Financial contributions are also greatly appreciated :blush:    
+---
 
-<a href="https://www.buymeacoffee.com/cvoyer" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>   
+## 🙏 Acknowledgements
 
-## :copyright: License  
-This project is licensed under the MIT License. See the LICENSE file for more details.
+- Garmin API client: [cyberjunky/python-garminconnect](https://github.com/cyberjunky/python-garminconnect)
+- Original concept: [n-kratz/garmin-notion](https://github.com/n-kratz/garmin-notion)
+
+## 🤝 Contributing
+
+Contributions are welcome! Open an issue or submit a pull request.
+Financial support is also appreciated 😊
+
+<a href="https://www.buymeacoffee.com/cvoyer" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
+## 📄 License
+
+MIT — see [LICENSE](LICENSE) for details.
